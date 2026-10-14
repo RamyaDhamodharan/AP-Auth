@@ -1,4 +1,4 @@
-
+  
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
@@ -12,6 +12,7 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "sqlalchemy>=2.0",
+    "alembic>=1.13",
     "psycopg[binary]",
     "python-dotenv",
     "pwdlib[argon2]",
