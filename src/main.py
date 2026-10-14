@@ -1,12 +1,10 @@
-from fastapi import FastAPI
 
-app = FastAPI(
-    title="GenWorx Auth Service",
-    version="0.1.0",
-    description="Authentication, session and user-management API.",
-)
+import uvicorn
 
-
-@app.get("/health", summary="Auth service health", description="Returns service health.")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "auth"}
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.api.rest.app:app",
+        host="127.0.0.1",
+        port=8001,
+        reload=True,
+    )
