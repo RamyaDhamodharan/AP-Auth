@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -26,7 +25,7 @@ def create_access_token(subject: str) -> str:
     )
 
 
-def decode_access_token(token: str) -> dict:
+def decode_access_token(token: str) -> dict[str, object]:
     settings = get_settings()
     return jwt.decode(
         token,

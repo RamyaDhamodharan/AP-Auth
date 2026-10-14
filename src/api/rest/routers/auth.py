@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -28,7 +27,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
-):
+) -> MessageResponse:
     email = str(payload.email).lower()
 
     existing_user = get_user_by_email(db, email)
@@ -59,17 +58,16 @@ def register(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to register user",
-        )from e
+        ) from e
 
-    return MessageResponse(
-        message="Registration successful"
-    )
+    return MessageResponse(message="Registration successful")
+
 
 @router.post("/login", response_model=TokenResponse)
 def login(
     payload: LoginRequest,
     db: Session = Depends(get_db),
-):
+) -> TokenResponse:
     email = str(payload.email).lower()
 
     user = get_user_by_email(db, email)
@@ -92,7 +90,6 @@ def login(
     access_token = create_access_token(
         subject=str(user.id),
     )
-
 
     return TokenResponse(
         access_token=access_token,

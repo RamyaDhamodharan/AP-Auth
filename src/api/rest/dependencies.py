@@ -33,7 +33,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token",
             headers={"WWW-Authenticate": "Bearer"},
-        )from err
+        ) from err
 
     user = db.get(User, user_id)
 
