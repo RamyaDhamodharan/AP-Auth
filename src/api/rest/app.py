@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.rest.routers import auth, health, users
+from src.api.rest.routes import auth, health, users
 
 app = FastAPI(
     title="GenWorx AP Auth Service",
