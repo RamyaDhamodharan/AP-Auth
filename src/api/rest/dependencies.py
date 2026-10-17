@@ -3,9 +3,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
 from sqlalchemy.orm import Session
 
-from src.core.security import decode_access_token
-from src.db.session import get_db
-from src.models.user import User
+from src.core.security_core import decode_access_token
+from src.db.session_db import get_db
+from src.models.user_models import User
 
 bearer_scheme = HTTPBearer()
 
