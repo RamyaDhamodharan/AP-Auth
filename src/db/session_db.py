@@ -3,7 +3,7 @@ from collections.abc import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from src.core.config import get_settings
+from src.core.config_core import get_settings
 
 settings = get_settings()
 

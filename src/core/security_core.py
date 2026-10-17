@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 
-from src.core.config import get_settings
+from src.core.config_core import get_settings
 
 
 def create_access_token(subject: str) -> str:
