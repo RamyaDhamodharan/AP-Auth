@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.rest.routes import auth_routes, health_routes, users_routes
+from src.core.config_core import get_settings
 
 app = FastAPI(
     title="GenWorx AP Auth Service",
@@ -11,14 +12,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-],
+        origin.strip()
+        for origin in get_settings().cors_allowed_origins.split(",")
+        if origin.strip()
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Protection"],
 )
 app.include_router(health_routes.router)
 app.include_router(auth_routes.router)

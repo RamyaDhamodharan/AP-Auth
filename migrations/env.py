@@ -1,12 +1,11 @@
-
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from src.core.config_core import get_settings
 from src.db.session_db import Base
+from src.models.refresh_session_models import RefreshSession  # noqa: F401
 from src.models.user_models import User  # noqa: F401
 
 # Alembic configuration
@@ -27,9 +26,9 @@ target_metadata = Base.metadata
 # Keep AP-Auth migration tracking separate from AP-Core.
 AUTH_VERSION_TABLE = "auth_alembic_version"
 
-# AP-Auth currently owns only the users table.
+# AP-Auth owns the users and refresh session tables.
 # This prevents Alembic from treating AP-Core tables as removed.
-AUTH_TABLES = {"users"}
+AUTH_TABLES = {"users", "refresh_sessions"}
 
 
 def include_name(name, type_, parent_names):

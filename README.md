@@ -9,4 +9,6 @@ FastAPI starter for authentication, refresh sessions, RBAC and admin user manage
 4. Run: `uv run uvicorn src.main:app --reload --port 8001`
 5. Open `http://127.0.0.1:8001/docs` or `http://127.0.0.1:8001/health`.
 
-Only health check is implemented. Login, JWT cookies, Argon2, lockout, audit events and admin routes are not implemented yet.
+Access tokens are short-lived and returned to the frontend for in-memory use only. Refresh tokens are opaque, stored server-side as SHA-256 hashes, and delivered only in a Secure, HttpOnly cookie. Configure `CORS_ALLOWED_ORIGINS` for the exact browser origins. The cookie is host-only by default, scoped to `/api/auth`, and uses `SameSite=Lax`; set `REFRESH_COOKIE_SAMESITE=none` only for an HTTPS deployment where the frontend and Auth are cross-site. Set `REFRESH_COOKIE_DOMAIN` only when deliberately sharing the cookie across trusted subdomains. Secure cookies are always enabled.
+
+Apply Auth migrations with `uv run alembic upgrade head`. This adds the refresh session table only if it is not already present; the migration downgrade intentionally preserves the session table and its data.

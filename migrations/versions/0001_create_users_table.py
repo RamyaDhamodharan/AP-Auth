@@ -1,9 +1,8 @@
 """Create the users table."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "0001"
 down_revision = None
@@ -12,6 +11,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if sa.inspect(op.get_bind()).has_table("users"):
+        return
+
     user_role = postgresql.ENUM(
         "associate",
         "admin",
@@ -94,11 +96,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("users")
-
-    postgresql.ENUM(
-        "associate",
-        "admin",
-        name="user_role",
-        create_type=False,
-    ).drop(op.get_bind(), checkfirst=True)
+    pass
