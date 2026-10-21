@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from src.core.config_core import get_settings
@@ -20,7 +20,7 @@ SessionLocal = sessionmaker(
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(schema="auth")
 
 
 def get_db() -> Generator[Session, None, None]:

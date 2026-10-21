@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from src.core.config_core import get_settings
 from src.db.session_db import Base
@@ -33,8 +33,10 @@ AUTH_TABLES = {"users", "refresh_sessions"}
 
 def include_name(name, type_, parent_names):
     """Include only tables owned by AP-Auth during autogeneration."""
+    if type_ == "schema":
+        return name == "auth"
     if type_ == "table":
-        return name in AUTH_TABLES
+        return name in AUTH_TABLES and parent_names.get("schema_name") == "auth"
     return True
 
 
@@ -45,9 +47,12 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        compare_type=True,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         version_table=AUTH_VERSION_TABLE,
+        version_table_schema="auth",
+        include_schemas=True,
         include_name=include_name,
     )
 
@@ -64,10 +69,17 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS auth"))
+        connection.commit()
+        connection.execute(text("SET search_path TO auth, public"))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            compare_type=True,
             version_table=AUTH_VERSION_TABLE,
+            version_table_schema="auth",
+            include_schemas=True,
             include_name=include_name,
         )
 

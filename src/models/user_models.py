@@ -35,7 +35,13 @@ class User(Base):
     email: Mapped[str] = mapped_column(String, nullable=False)
 
     role: Mapped[str] = mapped_column(
-        ENUM("associate", "admin", name="user_role", create_type=False),
+        ENUM(
+            "associate",
+            "admin",
+            name="user_role",
+            schema="auth",
+            create_type=False,
+        ),
         nullable=False,
     )
 
