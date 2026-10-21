@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from src.api.rest.app import app
 from src.api.rest.routes import auth_routes
 from src.core.config_core import get_settings
+from src.core.security_core import decode_access_token
 from src.db.session_db import get_db
 from src.models.refresh_session_models import RefreshSession
 
@@ -65,6 +66,7 @@ def test_login_sets_hashed_refresh_cookie_and_returns_only_access_token(
 ):
     user = SimpleNamespace(
         id=uuid.uuid4(),
+        role="associate",
         is_active=True,
         password_hash="password-hash",
         must_change_password=False,
@@ -107,9 +109,43 @@ def test_login_sets_hashed_refresh_cookie_and_returns_only_access_token(
     assert saved_session.token_hash != "refresh-secret"
 
 
+@pytest.mark.parametrize("role", ["admin", "associate"])
+def test_login_access_token_contains_user_role(client, monkeypatch, role):
+    user = SimpleNamespace(
+        id=uuid.uuid4(),
+        role=role,
+        is_active=True,
+        password_hash="password-hash",
+        must_change_password=False,
+        last_login_at=None,
+    )
+    db = MagicMock()
+    _set_db(db)
+    monkeypatch.setattr(auth_routes, "get_user_by_email", lambda *_args: user)
+    monkeypatch.setattr(auth_routes, "check_password", lambda *_args: True)
+    monkeypatch.setattr(auth_routes, "create_refresh_token", lambda: "refresh-secret")
+
+    try:
+        response = client.post(
+            "/api/auth/login",
+            json={"email": "user@example.com", "password": "password"},
+        )
+    finally:
+        _clear_db()
+
+    assert response.status_code == 200
+    claims = decode_access_token(response.json()["access_token"])
+    assert claims["role"] == role
+
+
 def test_refresh_rotates_token_and_rejects_reuse(client, monkeypatch):
     user_id = uuid.uuid4()
-    user = SimpleNamespace(id=user_id, is_active=True, must_change_password=False)
+    user = SimpleNamespace(
+        id=user_id,
+        role="associate",
+        is_active=True,
+        must_change_password=False,
+    )
     session = _session(user_id)
     db = MagicMock()
     locked_query = (
@@ -142,6 +178,36 @@ def test_refresh_rotates_token_and_rejects_reuse(client, monkeypatch):
     assert response.cookies[get_settings().refresh_cookie_name] == "rotated-secret"
     assert session.is_revoked is True
     assert saved_session.token_hash == hashlib.sha256(b"rotated-secret").hexdigest()
+
+
+def test_refresh_uses_role_from_current_database_user(client, monkeypatch):
+    user_id = uuid.uuid4()
+    user = SimpleNamespace(
+        id=user_id,
+        role="associate",
+        is_active=True,
+        must_change_password=False,
+    )
+    session = _session(user_id)
+    db = MagicMock()
+    locked_query = (
+        db.query.return_value.filter.return_value.with_for_update.return_value
+    )
+    locked_query.first.return_value = session
+    db.get.return_value = user
+    _set_db(db)
+    monkeypatch.setattr(auth_routes, "create_refresh_token", lambda: "rotated-secret")
+    # Simulate an administrator changing this user's role before the refresh.
+    user.role = "admin"
+
+    try:
+        response = client.post("/api/auth/refresh", headers=_refresh_headers())
+    finally:
+        _clear_db()
+
+    assert response.status_code == 200
+    claims = decode_access_token(response.json()["access_token"])
+    assert claims["role"] == "admin"
 
 
 def test_expired_refresh_is_revoked_and_cookie_cleared(client):
