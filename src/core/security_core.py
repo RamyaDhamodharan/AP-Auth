@@ -7,7 +7,7 @@ import jwt
 from src.core.config_core import get_settings
 
 
-def create_access_token(subject: str) -> str:
+def create_access_token(subject: str, role: str) -> str:
     settings = get_settings()
     expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes
@@ -18,6 +18,7 @@ def create_access_token(subject: str) -> str:
         "exp": expires_at,
         "iat": datetime.now(UTC),
         "type": "access",
+        "role": role,
     }
 
     return jwt.encode(

@@ -1,8 +1,9 @@
 """Create the users table."""
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import CreateEnumType
 
 revision = "0001"
 down_revision = None
@@ -11,18 +12,24 @@ depends_on = None
 
 
 def upgrade() -> None:
-    if sa.inspect(op.get_bind()).has_table("users"):
+    if not context.is_offline_mode() and sa.inspect(op.get_bind()).has_table(
+        "users", schema="auth"
+    ):
         return
 
     user_role = postgresql.ENUM(
         "associate",
         "admin",
         name="user_role",
+        schema="auth",
         create_type=False,
     )
 
     # Create the enum only if it does not already exist.
-    user_role.create(op.get_bind(), checkfirst=True)
+    if context.is_offline_mode():
+        op.execute(CreateEnumType(user_role))
+    else:
+        user_role.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "users",
@@ -92,6 +99,14 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("email", name="users_email_key"),
+        sa.ForeignKeyConstraint(
+            ["created_by"], ["auth.users.id"], name="users_created_by_fkey"
+        ),
+        sa.ForeignKeyConstraint(
+            ["updated_by"], ["auth.users.id"], name="users_updated_by_fkey"
+        ),
+        schema="auth",
     )
 
 

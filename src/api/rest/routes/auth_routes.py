@@ -149,7 +149,9 @@ def login(
         )
 
     settings = get_settings()
-    access_token = create_access_token(subject=str(user.id))
+    access_token = create_access_token(
+        subject=str(user.id), role=str(getattr(user.role, "value", user.role))
+    )
     refresh_token = create_refresh_token()
     now = datetime.now(UTC)
     db.add(
@@ -247,7 +249,9 @@ def refresh(
     db.commit()
     _set_refresh_cookie(response, rotated_token)
     return TokenResponse(
-        access_token=create_access_token(subject=str(user.id)),
+        access_token=create_access_token(
+            subject=str(user.id), role=str(getattr(user.role, "value", user.role))
+        ),
         expires_in=settings.access_token_expire_minutes * 60,
         must_change_password=user.must_change_password,
     )

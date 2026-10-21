@@ -10,6 +10,7 @@ COPY pyproject.toml ./
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY src ./src
+COPY scripts ./scripts
 
 RUN pip --default-timeout=300 install --no-cache-dir .
 
