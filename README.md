@@ -11,13 +11,14 @@ FastAPI starter for authentication, refresh sessions, RBAC and admin user manage
 
 Access tokens are short-lived and returned to the frontend for in-memory use only. Refresh tokens are opaque, stored server-side as SHA-256 hashes, and delivered only in a Secure, HttpOnly cookie. Configure `CORS_ALLOWED_ORIGINS` for the exact browser origins. The cookie is host-only by default, scoped to `/api/auth`, and uses `SameSite=Lax`; set `REFRESH_COOKIE_SAMESITE=none` only for an HTTPS deployment where the frontend and Auth are cross-site. Set `REFRESH_COOKIE_DOMAIN` only when deliberately sharing the cookie across trusted subdomains. Secure cookies are always enabled.
 
-Apply Auth migrations with `uv run alembic upgrade head`. This adds the refresh session table only if it is not already present; the migration downgrade intentionally preserves the session table and its data.
+Apply Auth migrations with `uv run alembic upgrade head`. Migrations `0003` and `0004` are additive and check existing `auth.users` columns before adding the temporary-password and account-state fields. The live database must be reachable with the configured `DATABASE_URL` before applying them.
+
+Public self-registration is disabled. `POST /admin/associates`, `GET /admin/associates`, `DELETE /admin/associates/{id}`, and `POST /admin/associates/{id}/reset-password` require an admin token. When omitted on create/reset, a cryptographically random temporary password is returned once. Its lifetime defaults to 24 hours (`TEMP_PASSWORD_TTL_HOURS`). The password is stored only as an Argon2 hash. A first-login token is limited to password change; `POST /auth/set-password` replaces the hash and clears the temporary-password flag and expiry. Other protected Auth and AP-Core routes reject limited tokens. Expired temporary passwords return 401 and require an admin reset.
 
 ## Create first admin
 
-After starting the local stack, create the first administrator with
-`docker compose exec auth python scripts/create_admin.py --email admin@example.com`.
-The script prompts for the password twice using a hidden prompt. It never accepts
-the password as a command-line argument or prints it. If the email already
-exists, it asks for confirmation before promoting the account and resetting its
-password hash.
+Configure `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the root `.env`, then run
+`docker compose exec auth python scripts/seed_admin.py`. The seed is idempotent:
+it creates the admin if absent and skips without changing an existing account.
+It never prints or stores the plaintext password. The interactive
+`create_admin.py` utility remains available for manual promotion/reset workflows.

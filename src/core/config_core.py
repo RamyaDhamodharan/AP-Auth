@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
     refresh_token_expire_days: int = 7
+    temp_password_ttl_hours: int = 24
+    login_max_attempts: int = 5
+    login_window_minutes: int = 15
+    login_lockout_minutes: int = 15
     refresh_cookie_name: str = "ap_refresh"
     refresh_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     refresh_cookie_domain: str | None = None

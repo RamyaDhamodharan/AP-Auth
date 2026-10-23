@@ -17,12 +17,14 @@ app.add_middleware(
         if origin.strip()
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-CSRF-Protection"],
 )
 app.include_router(health_routes.router)
 app.include_router(auth_routes.router)
+app.include_router(auth_routes.password_change_alias_router)
 app.include_router(users_routes.router)
+app.include_router(users_routes.admin_associates_router)
 
 
 @app.get("/")

@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool, text
 
 from src.core.config_core import get_settings
 from src.db.session_db import Base
+from src.models.login_attempt_models import LoginAttempt  # noqa: F401
 from src.models.refresh_session_models import RefreshSession  # noqa: F401
 from src.models.user_models import User  # noqa: F401
 
@@ -28,7 +29,7 @@ AUTH_VERSION_TABLE = "auth_alembic_version"
 
 # AP-Auth owns the users and refresh session tables.
 # This prevents Alembic from treating AP-Core tables as removed.
-AUTH_TABLES = {"users", "refresh_sessions"}
+AUTH_TABLES = {"users", "refresh_sessions", "login_attempts"}
 
 
 def include_name(name, type_, parent_names):

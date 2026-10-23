@@ -7,7 +7,14 @@ import jwt
 from src.core.config_core import get_settings
 
 
-def create_access_token(subject: str, role: str) -> str:
+def create_access_token(
+    subject: str,
+    role: str,
+    must_change_password: bool = False,
+    email: str | None = None,
+    name: str | None = None,
+    temp_password_expires_at: datetime | None = None,
+) -> str:
     settings = get_settings()
     expires_at = datetime.now(UTC) + timedelta(
         minutes=settings.access_token_expire_minutes
@@ -19,7 +26,15 @@ def create_access_token(subject: str, role: str) -> str:
         "iat": datetime.now(UTC),
         "type": "access",
         "role": role,
+        "must_change_password": must_change_password,
+        "scope": "password:change" if must_change_password else "workspace",
     }
+    if email is not None:
+        payload["email"] = email
+    if name is not None:
+        payload["name"] = name
+    if temp_password_expires_at is not None:
+        payload["temp_password_expires_at"] = temp_password_expires_at.isoformat()
 
     return jwt.encode(
         payload,
