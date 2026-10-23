@@ -1,4 +1,3 @@
-
 import uuid
 from datetime import datetime
 
@@ -20,9 +19,7 @@ from src.db.session_db import Base
 class User(Base):
     __tablename__ = "users"
 
-    __table_args__ = (
-        UniqueConstraint("email", name="users_email_key"),
-    )
+    __table_args__ = (UniqueConstraint("email", name="users_email_key"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -63,13 +60,9 @@ class User(Base):
         Integer, nullable=False, server_default=text("0")
     )
 
-    locked_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    last_login_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

@@ -66,10 +66,13 @@ def test_login_sets_hashed_refresh_cookie_and_returns_only_access_token(
 ):
     user = SimpleNamespace(
         id=uuid.uuid4(),
+        email="user@example.com",
+        name="Test User",
         role="associate",
         is_active=True,
         password_hash="password-hash",
         must_change_password=False,
+        temp_password_expires_at=None,
         last_login_at=None,
     )
     db = MagicMock()
@@ -109,14 +112,125 @@ def test_login_sets_hashed_refresh_cookie_and_returns_only_access_token(
     assert saved_session.token_hash != "refresh-secret"
 
 
+def test_expired_temporary_password_is_rejected(client, monkeypatch):
+    user = SimpleNamespace(
+        id=uuid.uuid4(),
+        role="associate",
+        is_active=True,
+        password_hash="password-hash",
+        must_change_password=True,
+        temp_password_expires_at=datetime.now(UTC) - timedelta(seconds=1),
+        last_login_at=None,
+    )
+    db = MagicMock()
+    _set_db(db)
+    monkeypatch.setattr(auth_routes, "get_user_by_email", lambda *_args: user)
+    monkeypatch.setattr(auth_routes, "check_password", lambda *_args: True)
+
+    try:
+        response = client.post(
+            "/api/auth/login",
+            json={"email": "user@example.com", "password": "temporary-password"},
+        )
+    finally:
+        _clear_db()
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == (
+        "Your temporary password has expired. Please contact your admin for a new one."
+    )
+    db.add.assert_not_called()
+
+
+def test_unknown_email_and_wrong_password_return_same_generic_message(
+    client, monkeypatch
+):
+    api = client
+    db = MagicMock()
+    _set_db(db)
+    user = SimpleNamespace(password_hash="known-user-hash", is_active=True)
+    monkeypatch.setattr(
+        auth_routes,
+        "get_user_by_email",
+        lambda _db, email: user if email == "known@example.com" else None,
+    )
+    password_checks = []
+
+    def check_password(plain, hashed):
+        password_checks.append(hashed)
+        return False
+
+    monkeypatch.setattr(auth_routes, "check_password", check_password)
+    monkeypatch.setattr(auth_routes, "_record_failed_login", lambda *_args: False)
+    try:
+        unknown = api.post(
+            "/api/auth/login",
+            json={"email": "missing@example.com", "password": "bad"},
+        )
+        wrong_password = api.post(
+            "/api/auth/login",
+            json={"email": "known@example.com", "password": "bad"},
+        )
+    finally:
+        _clear_db()
+
+    expected = "Invalid email or password. Please try again."
+    assert unknown.status_code == wrong_password.status_code == 401
+    assert unknown.json()["detail"] == wrong_password.json()["detail"] == expected
+    assert password_checks == [auth_routes._DUMMY_PASSWORD_HASH, "known-user-hash"]
+
+
+def test_login_rate_limits_after_configured_failed_attempts(client, monkeypatch):
+    api = client
+    db = MagicMock()
+    _set_db(db)
+    monkeypatch.setenv("LOGIN_MAX_ATTEMPTS", "3")
+    get_settings.cache_clear()
+    monkeypatch.setattr(auth_routes, "get_user_by_email", lambda *_args: None)
+    monkeypatch.setattr(auth_routes, "check_password", lambda *_args: False)
+    monkeypatch.setattr(auth_routes, "_is_login_locked", lambda *_args: False)
+    db.execute.return_value.scalar_one_or_none.side_effect = [1, 2, 3]
+    try:
+        responses = [
+            api.post(
+                "/api/auth/login",
+                json={"email": "lock@example.com", "password": "wrong"},
+            )
+            for _ in range(3)
+        ]
+    finally:
+        _clear_db()
+
+    assert [response.status_code for response in responses] == [401, 401, 429]
+    assert responses[-1].json()["detail"] == (
+        "Too many attempts. Please try again in a few minutes."
+    )
+    assert db.execute.call_count == 4  # three upserts and the lockout audit record
+
+
+def test_public_registration_is_disabled(client):
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "email": "user@example.com",
+            "password": "long-temporary-password",
+            "full_name": "Test User",
+        },
+    )
+    assert response.status_code == 404
+
+
 @pytest.mark.parametrize("role", ["admin", "associate"])
 def test_login_access_token_contains_user_role(client, monkeypatch, role):
     user = SimpleNamespace(
         id=uuid.uuid4(),
+        email="user@example.com",
+        name="Test User",
         role=role,
         is_active=True,
         password_hash="password-hash",
         must_change_password=False,
+        temp_password_expires_at=None,
         last_login_at=None,
     )
     db = MagicMock()
@@ -142,9 +256,12 @@ def test_refresh_rotates_token_and_rejects_reuse(client, monkeypatch):
     user_id = uuid.uuid4()
     user = SimpleNamespace(
         id=user_id,
+        email="user@example.com",
+        name="Test User",
         role="associate",
         is_active=True,
         must_change_password=False,
+        temp_password_expires_at=None,
     )
     session = _session(user_id)
     db = MagicMock()
@@ -184,9 +301,12 @@ def test_refresh_uses_role_from_current_database_user(client, monkeypatch):
     user_id = uuid.uuid4()
     user = SimpleNamespace(
         id=user_id,
+        email="user@example.com",
+        name="Test User",
         role="associate",
         is_active=True,
         must_change_password=False,
+        temp_password_expires_at=None,
     )
     session = _session(user_id)
     db = MagicMock()
