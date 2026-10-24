@@ -137,7 +137,11 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key=settings.refresh_cookie_name,
         value=token,
-        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        max_age=(
+            settings.refresh_token_expire_days * 24 * 60 * 60
+            if settings.auth_persistent_session
+            else None
+        ),
         httponly=True,
         secure=True,
         samesite=settings.refresh_cookie_samesite,

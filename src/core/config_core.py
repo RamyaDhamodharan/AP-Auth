@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 5
     refresh_token_expire_days: int = 7
+    auth_persistent_session: bool = False
     temp_password_ttl_hours: int = 24
     login_max_attempts: int = 5
     login_window_minutes: int = 15

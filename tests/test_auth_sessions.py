@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import Response
 from fastapi.testclient import TestClient
 
 from src.api.rest.app import app
@@ -19,6 +20,7 @@ from src.models.refresh_session_models import RefreshSession
 def auth_settings(monkeypatch):
     monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
     monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "5")
+    monkeypatch.delenv("AUTH_PERSISTENT_SESSION", raising=False)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -106,10 +108,26 @@ def test_login_sets_hashed_refresh_cookie_and_returns_only_access_token(
     assert response.cookies[get_settings().refresh_cookie_name] == "refresh-secret"
     assert "httponly" in response.headers["set-cookie"].lower()
     assert "secure" in response.headers["set-cookie"].lower()
+    assert "max-age=" not in response.headers["set-cookie"].lower()
+    assert "expires=" not in response.headers["set-cookie"].lower()
     assert "path=/api/auth" in response.headers["set-cookie"].lower()
     assert "samesite=lax" in response.headers["set-cookie"].lower()
     assert saved_session.token_hash == hashlib.sha256(b"refresh-secret").hexdigest()
     assert saved_session.token_hash != "refresh-secret"
+
+
+def test_persistent_session_flag_restores_cookie_max_age(monkeypatch):
+    monkeypatch.setenv("AUTH_PERSISTENT_SESSION", "true")
+    get_settings.cache_clear()
+    response = Response()
+
+    auth_routes._set_refresh_cookie(response, "refresh-secret")
+
+    cookie = response.headers["set-cookie"].lower()
+    assert "max-age=604800" in cookie
+    assert "httponly" in cookie
+    assert "secure" in cookie
+    assert "samesite=lax" in cookie
 
 
 def test_expired_temporary_password_is_rejected(client, monkeypatch):
